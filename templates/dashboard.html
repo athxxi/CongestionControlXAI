@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Traffic Monitoring Dashboard</title>
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+            background: #111;
+            color: white;
+        }
+
+        .card {
+            margin: 20px;
+            padding: 20px;
+            background: #222;
+            border-radius: 10px;
+        }
+
+        img {
+            max-width: 90%;
+            border-radius: 10px;
+        }
+
+        h1 {
+            color: #00ffcc;
+        }
+
+        .contribution-text {
+            margin-top: 15px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>🚦 Traffic Monitoring Dashboard</h1>
+
+<div class="card">
+    <h2>Live Video Stream</h2>
+    <img src="/video_feed">
+</div>
+
+<div class="card">
+    <h2>AI Traffic Explanation using SHAP</h2>
+    <div id="contributions"></div>
+</div>
+
+<div class="card">
+    <h2>Congestion Level</h2>
+    <p id="congestion">Loading...</p>
+</div>
+
+<div class="card">
+    <h2>Average Vehicle Count</h2>
+    <p id="count">Loading...</p>
+</div>
+
+
+
+<script>
+async function fetchData() {
+    try {
+       
+        const statsResponse = await fetch("/stats");
+        const statsData = await statsResponse.json();
+
+        document.getElementById("count").innerText = statsData.avg_count;
+        document.getElementById("congestion").innerText = statsData.congestion;
+
+        
+        const shapResponse = await fetch("/shap");
+        const shapData = await shapResponse.json();
+
+        document.getElementById("contributions").innerHTML =
+            "<b>AI Traffic Report:</b><br><br>" + shapData.report;
+
+    } catch (error) {
+        console.error("Error fetching data:", error);
+        document.getElementById("contributions").innerHTML =
+            "Unable to generate AI explanation at the moment.";
+    }
+}
+
+
+setInterval(fetchData, 10000);
+fetchData();
+</script>
+
+</body>
+</html>
