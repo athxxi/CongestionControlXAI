@@ -5,13 +5,13 @@ from sklearn.metrics import classification_report
 import joblib
 
 
-df = pd.read_csv("traffic_training_data.csv")
+df = pd.read_csv("TrafficData001.csv")
 
 
 print("\nClass Distribution:")
 print(df["congestion"].value_counts())
 
-X = df[["vehicle_count", "avg_count", "hour"]]
+X = df[["vehicle_count", "hour"]]
 y = df["congestion"]
 
 
@@ -29,6 +29,6 @@ predictions = model.predict(X_test)
 print("\nModel Evaluation:\n")
 print(classification_report(y_test, predictions))
 
-joblib.dump(model, "congestion_model_new.pkl")
+joblib.dump(model, "CongestionModel001.pkl")
 
-print("\nNew model saved as congestion_model.pkl")
+print("\nNew model saved as CongestionModel001.pkl")

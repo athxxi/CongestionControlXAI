@@ -7,16 +7,15 @@ from datetime import datetime
 
 model = YOLO("yolov8n.pt")
 
-
 cap = cv2.VideoCapture("footages/footage2.mp4")
 
 vehicle_classes = ["car", "truck", "bus", "motorcycle"]
 
 
-if not os.path.exists("traffic_training_data.csv"):
-    with open("traffic_training_data.csv", "w", newline="") as f:
+if not os.path.exists("TrafficData001.csv"):
+    with open("TrafficData001.csv", "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["vehicle_count", "avg_count", "hour", "congestion"])
+        writer.writerow(["vehicle_count", "hour", "congestion"])
 
 frame_counts = []
 
@@ -27,7 +26,10 @@ while True:
     if not ret:
         break
 
-    results = model(frame)
+    height, width = frame.shape[:2]
+    left_half = frame[:, :width//2]
+
+    results = model(left_half)
 
     count = 0
     for r in results:
@@ -45,9 +47,9 @@ while True:
     hour = datetime.now().hour
 
 
-    if avg_count > 15:
+    if avg_count > 11:
         congestion = "HIGH"
-    elif avg_count > 10:
+    elif avg_count > 7:
         congestion = "MEDIUM"
     else:
         congestion = "LOW"
@@ -55,9 +57,9 @@ while True:
     print(f"Vehicles: {avg_count} | Label: {congestion}")
 
     
-    with open("traffic_training_data.csv", "a", newline="") as f:
+    with open("TrafficData001.csv", "a", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow([count, avg_count, hour, congestion])
+        writer.writerow([count, hour, congestion])
 
     annotated = results[0].plot()
     cv2.putText(annotated, f"Vehicles: {avg_count}",

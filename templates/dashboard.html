@@ -1,91 +1,352 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Traffic Monitoring Dashboard</title>
-    <style>
-        body {
-            font-family: Arial;
-            text-align: center;
-            background: #111;
-            color: white;
-        }
-
-        .card {
-            margin: 20px;
-            padding: 20px;
-            background: #222;
-            border-radius: 10px;
-        }
-
-        img {
-            max-width: 90%;
-            border-radius: 10px;
-        }
-
-        h1 {
-            color: #00ffcc;
-        }
-
-        .contribution-text {
-            margin-top: 15px;
-            font-size: 14px;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Traffic Monitoring XAI System</title>
+    <link rel="stylesheet" href="/static/global.css">
 </head>
 <body>
+    <div class="app-container">
+        
+        <div class="top-dashboard">
+            <div class="logo-area">
+                <div class="logo-icon">🚦</div>
+                <div class="logo-text">
+                    <h1>Traffic Monitoring System</h1>
+                    <p>XAI-Powered Analytics</p>
+                </div>
+            </div>
 
-<h1>🚦 Traffic Monitoring Dashboard</h1>
+            <div class="stats-container">
+                
+                <div class="stat-item">
+                    <div class="stat-icon">🚗</div>
+                    <div class="stat-info">
+                        <div class="stat-label">CONGESTION</div>
+                        <div class="stat-value" id="congestionValue">—</div>
+                        <div class="congestion-tag" id="congestionTag">Analyzing</div>
+                    </div>
+                </div>
 
-<div class="card">
-    <h2>Live Video Stream</h2>
-    <img src="/video_feed">
-</div>
+                
+                <div class="stat-item">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-info">
+                        <div class="stat-label">
+                            AVG VEHICLES
+                        </div>
+                        <div class="stat-value">
+                            <span id="avgCountValue">—</span>
+                            <span class="stat-unit">/frame</span>
+                        </div>
+                        <div class="congestion-tag" style="background: transparent; padding: 0;">Rolling average</div>
+                    </div>
+                </div>
 
-<div class="card">
-    <h2>AI Traffic Explanation using SHAP</h2>
-    <div id="contributions"></div>
-</div>
+                
+                <div class="stat-item">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-info">
+                        <div class="stat-label">
+                            CURRENT VEHICLES
+                            <span class="realtime-badge">LIVE</span>
+                        </div>
+                        <div class="stat-value">
+                            <span id="currentVehicles">—</span>
+                            <span class="stat-unit">vehicles/frame</span>
+                        </div>
+                        <div class="congestion-tag" style="background: transparent; padding: 0;">Real-time streaming</div>
+                    </div>
+                </div>
+            </div>
 
-<div class="card">
-    <h2>Congestion Level</h2>
-    <p id="congestion">Loading...</p>
-</div>
-
-<div class="card">
-    <h2>Average Vehicle Count</h2>
-    <p id="count">Loading...</p>
-</div>
-
-
-
-<script>
-async function fetchData() {
-    try {
-       
-        const statsResponse = await fetch("/stats");
-        const statsData = await statsResponse.json();
-
-        document.getElementById("count").innerText = statsData.avg_count;
-        document.getElementById("congestion").innerText = statsData.congestion;
+            <div class="live-status">
+                <div class="live-dot"></div>
+                <div>
+                    <div class="live-text">LIVE</div>
+                </div>
+            </div>
+        </div>
 
         
-        const shapResponse = await fetch("/shap");
-        const shapData = await shapResponse.json();
+        <div class="bottom-content">
+            
+            <div class="video-section">
+                <div class="video-header">
+                    <h2>
+                        <span>🎥</span>
+                        Real-Time Traffic Monitoring
+                        <span style="font-size: 0.6rem; color: #64748b; margin-left: auto;">AI Detection Overlay</span>
+                    </h2>
+                </div>
+                <div class="video-container">
+                    <img src="/video_feed" alt="Live Traffic Feed" id="videoFeed">
+                </div>
+            </div>
 
-        document.getElementById("contributions").innerHTML =
-            "<b>AI Traffic Report:</b><br><br>" + shapData.report;
+            
+            <div class="ai-section">
+                <div class="ai-header">
+                    <h3>
+                        <span>🧠</span>
+                        AI Traffic Analysis
+                    </h3>
+                    <div class="ai-badge">SHAP Interpretability (Updates: 10s)</div>
+                </div>
+                <div class="ai-content" id="aiExplanation">
+                    <div class="shimmer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    } catch (error) {
-        console.error("Error fetching data:", error);
-        document.getElementById("contributions").innerHTML =
-            "Unable to generate AI explanation at the moment.";
-    }
-}
+    <script>
+        let lastData = null;
+        let realtimeInterval = null;
+        let aiUpdateInterval = null;
 
+        
+        function updateCongestionUI(congestion, severityScore = null) {
+            const valueElem = document.getElementById('congestionValue');
+            const tagElem = document.getElementById('congestionTag');
+            
+            const level = String(congestion || '').toUpperCase();
+            let displayText = '';
+            let tagText = '';
+            let color = '';
+            
+            if (level.includes('HIGH')) {
+                displayText = '🔴 HIGH';
+                tagText = 'Severe congestion';
+                color = '#ef4444';
+            } else if (level.includes('MEDIUM')) {
+                displayText = '🟡 MEDIUM';
+                tagText = 'Moderate flow';
+                color = '#f59e0b';
+            } else if (level.includes('LOW')) {
+                displayText = '🟢 LOW';
+                tagText = 'Smooth traffic';
+                color = '#10b981';
+            } else {
+                displayText = '⚡ ' + congestion;
+                tagText = 'Analyzing pattern';
+                color = '#64748b';
+            }
+            
+            valueElem.innerHTML = displayText;
+            valueElem.style.color = color;
+            tagElem.innerHTML = tagText;
+            tagElem.style.color = color;
+        }
 
-setInterval(fetchData, 10000);
-fetchData();
-</script>
+        
+        function animateValue(element) {
+            element.classList.add('count-update');
+            setTimeout(() => {
+                element.classList.remove('count-update');
+            }, 300);
+        }
 
+        
+        function updateLastUpdate() {
+            const now = new Date();
+            document.getElementById('lastUpdate').innerHTML = now.toLocaleTimeString();
+        }
+
+        
+        function renderExplanation(reportData) {
+            const container = document.getElementById('aiExplanation');
+            
+            if (!reportData) {
+                container.innerHTML = '<div style="color: #94a3b8; text-align: center; padding: 2rem;">Waiting for AI analysis...</div>';
+                return;
+            }
+            
+            let html = '';
+            
+            
+            if (reportData.severity_score || reportData.trend || reportData.time_context) {
+                html += '<div class="metrics-mini">';
+                if (reportData.severity_score) {
+                    html += `
+                        <div class="metric-chip">
+                            <div class="metric-chip-label">Severity Score</div>
+                            <div class="metric-chip-value" style="color: ${getSeverityColor(reportData.severity_score)}">
+                                    ${Number(reportData.severity_score).toFixed(2)}/100
+                            </div>
+                        </div>
+                    `;
+                }
+                if (reportData.trend) {
+                    const trendIcon = reportData.trend === 'increasing' ? '📈' : reportData.trend === 'decreasing' ? '📉' : '➡️';
+                    html += `
+                        <div class="metric-chip">
+                            <div class="metric-chip-label">Trend</div>
+                            <div class="metric-chip-value">${trendIcon} ${reportData.trend.charAt(0).toUpperCase() + reportData.trend.slice(1)}</div>
+                        </div>
+                    `;
+                }
+                if (reportData.time_context && reportData.time_context !== '—') {
+                    html += `
+                        <div class="metric-chip">
+                            <div class="metric-chip-label">Time Period</div>
+                            <div class="metric-chip-value">${reportData.time_context}</div>
+                        </div>
+                    `;
+                }
+                html += '</div>';
+            }
+            
+            
+            if (reportData.report) {
+                html += reportData.report;
+            } else if (typeof reportData === 'string') {
+                html += `<div>${reportData}</div>`;
+            } else if (reportData.error) {
+                html += `<div style="color: #ef4444;">⚠️ ${reportData.error}</div>`;
+            } else {
+                html += '<div style="color: #94a3b8;">Analysis pending...</div>';
+            }
+            
+            container.innerHTML = html;
+            
+            
+            container.scrollTop = 0;
+        }
+
+        function getSeverityColor(score) {
+            if (score >= 70) return '#ef4444';
+            if (score >= 40) return '#f59e0b';
+            return '#10b981';
+        }
+
+        
+        async function fetchStats() {
+            try {
+                const response = await fetch('/stats');
+                if (!response.ok) throw new Error('Stats fetch failed');
+                const data = await response.json();
+                
+                const avgCount = data.avg_count || data.avgCount || 0;
+                const congestion = data.congestion || 'UNKNOWN';
+                
+                
+                const avgElement = document.getElementById('avgCountValue');
+                const newAvgValue = Math.round(avgCount);
+                if (avgElement.innerHTML !== newAvgValue.toString()) {
+                    avgElement.innerHTML = newAvgValue;
+                    animateValue(avgElement);
+                }
+                
+                updateCongestionUI(congestion);
+                
+                return data;
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+                return null;
+            }
+        }
+
+        
+        async function fetchRealTimeCount() {
+            try {
+                const response = await fetch('/stats');
+                if (!response.ok) throw new Error('Real-time fetch failed');
+                const data = await response.json();
+                
+                const currentCount = data.vehicle_count || data.vehicleCount || 0;
+                const currentElement = document.getElementById('currentVehicles');
+                const newValue = currentCount;
+                
+                if (currentElement.innerHTML !== newValue.toString()) {
+                    currentElement.innerHTML = newValue;
+                    animateValue(currentElement);
+                }
+                
+               
+                const congestion = data.congestion || 'UNKNOWN';
+                updateCongestionUI(congestion);
+                
+                return data;
+            } catch (error) {
+                console.error('Error fetching real-time count:', error);
+                return null;
+            }
+        }
+
+       
+        async function fetchExplanation() {
+            try {
+                const response = await fetch('/shap');
+                if (!response.ok) throw new Error('SHAP fetch failed');
+                const data = await response.json();
+                renderExplanation(data);
+                return data;
+            } catch (error) {
+                console.error('Error fetching explanation:', error);
+                renderExplanation({ error: 'Failed to load AI analysis. Retrying...' });
+                return null;
+            }
+        }
+
+        
+        const videoFeed = document.getElementById('videoFeed');
+        if (videoFeed) {
+            videoFeed.onerror = function() {
+                console.warn('Video feed unavailable');
+                this.style.opacity = '0.6';
+            };
+        }
+
+        
+        function startRealTimeUpdates() {
+            
+            fetchRealTimeCount();
+            
+            
+            realtimeInterval = setInterval(() => {
+                fetchRealTimeCount();
+            }, 3000);
+        }
+
+        
+        function startSlowUpdates() {
+           
+            fetchStats();
+            fetchExplanation();
+            
+           
+            aiUpdateInterval = setInterval(() => {
+                fetchStats();
+                fetchExplanation();
+            }, 10000);
+        }
+
+        
+        function initialize() {
+            startRealTimeUpdates();
+            startSlowUpdates();
+        }
+
+       
+        window.addEventListener('beforeunload', () => {
+            if (realtimeInterval) clearInterval(realtimeInterval);
+            if (aiUpdateInterval) clearInterval(aiUpdateInterval);
+        });
+        
+      
+        initialize();
+        
+       
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                fetchRealTimeCount();
+                fetchStats();
+                fetchExplanation();
+            }
+        });
+    </script>
 </body>
 </html>
